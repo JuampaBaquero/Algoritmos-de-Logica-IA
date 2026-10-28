@@ -31,7 +31,7 @@ class MotorInferencia:
     # ==========================================================
     # PARTE 2: MOTORES DE INFERENCIA (A DESARROLLAR)
     # ==========================================================
-    def ejecutar_inferencia(self, hechos_iniciales, objetivo):
+    def ejecutar_inferencia(self, hechos_iniciales, objetivo) -> bool:
         """
         Motor de Encadenamiento hacia Adelante (Forward Chaining).
         Debe retornar True si el objetivo es consecuencia lógica, False en caso contrario.
@@ -39,52 +39,73 @@ class MotorInferencia:
         """
         self.memoria_trabajo = set(hechos_iniciales) #Memoria
         self.traza_explicacion = [] #toca reiniciar para cada ejecucion dio mio
-        deducidos: Regla = set() #los deducidos, incia conjunto vacio
-
+        deducidos: set[Regla] = set() #los deducidos, incia conjunto vacio
 
         #si el objetivo ya esta presente, devolver de una vez
         if objetivo in self.memoria_trabajo:
             return True
 
-        #
         while self.memoria_trabajo != deducidos:
             deducidos = set(self.memoria_trabajo)
 
-            for relga in self.reglas:
-                if relga.antecedentes <= deducidos:
+            for r in self.reglas:
+                if r.antecedentes <= deducidos:
                     #si el consecuente llega a ser la meta
-                    if relga.consecuente == objetivo:
-                        if relga.id_regla not in self.traza_explicacion:
-                            self.traza_explicacion.append(relga.id_regla)
+                    if r.consecuente == objetivo:
+                        if r.id_regla not in self.traza_explicacion:
+                            self.traza_explicacion.append(r.id_regla)
 
                         return True
 
                     #si es un nuevo hecho, agregarlo a memory
-                    if relga.consecuente not in self.memoria_trabajo:
-                        self.memoria_trabajo.add(relga.consecuente)
-                        if relga.id_regla not in self.traza_explicacion:
-                            self.traza_explicacion.append(relga.id_regla)
+                    if r.consecuente not in self.memoria_trabajo:
+                        self.memoria_trabajo.add(r.consecuente)
+                        if r.id_regla not in self.traza_explicacion:
+                            self.traza_explicacion.append(r.id_regla)
     
         # TODO: Implementar la lógica iterativa basada en el punto fijo.
         
         return False # Cambiar por el resultado lógico
 
-    def ejecutar_inferencia_atras(self, hechos_iniciales, objetivo):
+    def ejecutar_inferencia_atras(self, hechos_iniciales, objetivo) -> bool:
         """
         Motor de Encadenamiento hacia Atrás (Backward Chaining).
         Debe retornar True si el objetivo puede ser probado, False en caso contrario.
         Debe manejar adecuadamente la recursividad (goal-driven) y los casos base.
         """
-        
-        # TODO: Implementar la lógica recursiva orientada a objetivos.
-        
+
+        if objetivo in hechos_iniciales:
+            return True
+
+        candidatas = self._obtener_reglas_con_conclusion(objetivo)
+        sub_meta: bool
+
+        for regla in candidatas:
+            sub_meta = True
+
+            for premisa in regla.antecedentes:
+                if not self.ejecutar_inferencia_atras(hechos_iniciales, premisa):
+                    sub_meta = False
+
+            if sub_meta:
+                self.traza_explicacion.append(regla.id_regla)
+                return True
+
         return False # Cambiar por el resultado lógico
+
+    def _obtener_reglas_con_conclusion(self, objetivo) -> list[Regla]:
+        reglas: list[Regla] = []
+        for r in self.reglas:
+            if r.consecuente == objetivo:
+                reglas.append(r)
+
+        return reglas
 
 # ==========================================================
 # PARTE 3: EJECUCIÓN (PUEDEN MODIFICAR PARA PRUEBAS)
 # ==========================================================
-'''
-if __name__ == "__main__":
+
+""" if __name__ == "__main__":
     # 1. Inicializar el motor con el archivo de reglas
     motor = MotorInferencia("base_conocimiento.json")
 
@@ -105,8 +126,8 @@ if __name__ == "__main__":
     #print("--- Motor Hacia Atrás ---")
     #resultado_atras = motor.ejecutar_inferencia_atras(sintomas, hipotesis)
     #print(f"¿Es demostrable?: {resultado_atras}")
-'''
-
+ """
+ 
 #testeo hecho con IA
 if __name__ == "__main__":
     motor = MotorInferencia("base_conocimiento.json")
@@ -150,7 +171,7 @@ if __name__ == "__main__":
     ]
 
     for nombre, hechos, objetivo, esperado in casos:
-        resultado = motor.ejecutar_inferencia(hechos, objetivo)
+        resultado = motor.ejecutar_inferencia_atras(hechos, objetivo)
         estado = "OK" if resultado == esperado else "FALLO"
         print(f"[{estado}] {nombre}")
         print(f"   Objetivo: {objetivo} -> {resultado} (esperado {esperado})")
@@ -159,4 +180,4 @@ if __name__ == "__main__":
             print(f"     {reglas_por_id[id_regla]}")
         if not motor.traza_explicacion:
             print("     (ninguna regla disparada)")
-        print(f"   Memoria final: {len(motor.memoria_trabajo)} hechos\n")
+        print(f"   Memoria final: {len(motor.memoria_trabajo)} hechos\n") 
